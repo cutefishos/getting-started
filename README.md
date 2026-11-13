@@ -330,25 +330,6 @@ merges every catalog; entries whose English changed are marked fuzzy and
 show in English until they are translated again. Do not edit the `.pot`
 files by hand.
 
-## Notes for AI agents
-
-- Run the steps in order and stop at the first error; report the failing
-  command and its output rather than working around it.
-- Keep the install prefix `/usr` and the build order from step 3.
-- Only install the optional components the user asked for. Treat cutefish-dm
-  as optional unless the user wants it: it replaces the display manager and
-  changes what appears at the next boot, so confirm before enabling it.
-- Do not disable or remove the user's current desktop or display manager
-  without asking.
-- To contribute a translation, follow "Adding a language" and open one pull
-  request per repository; do not change the source code or the templates.
-  For the ten maintained languages, correct only the wrong entries.
-- A successful install is checked by
-  `test -f /usr/share/wayland-sessions/cutefish-wayland.desktop` and
-  `command -v cutefish-compositor cutefish-wayland-session`. The desktop
-  itself can only be tried by logging in to the session on real hardware or
-  in a virtual machine with 3D acceleration.
-
 ## License
 
 BSD-3-Clause; see [LICENSE](LICENSE).
