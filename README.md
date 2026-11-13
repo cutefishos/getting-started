@@ -260,9 +260,12 @@ Xwayland.
 
 ## Adding a language
 
-Cutefish is written in US English. Every other language comes in as a pull
-request, one per repository, and is welcome whether a person or an agent
-wrote it. The text lives in gettext catalogs:
+Cutefish is written in US English. The project maintains ten catalogs
+itself: `es`, `pt_BR`, `fr`, `de`, `ru`, `ja`, `ko`, `it`, `zh_CN` and
+`zh_TW`. A wrong translation in one of them is corrected by a pull request
+against `po/<code>.po`; later updates keep the correction. Any other
+language comes in as a pull request, one per repository, and is welcome
+whether a person or an agent wrote it. The text lives in gettext catalogs:
 
 | Repository | Template |
 |---|---|
@@ -278,11 +281,11 @@ wrote it. The text lives in gettext catalogs:
 | video-player | `po/cutefish-video-player.pot` |
 | calendar | `po/cutefish-calendar.pot` |
 | system-monitor | `po/cutefish-system-monitor.pot` |
+| calculator | `po/cutefish-calculator.pot` |
 
 A language is `po/<code>.po` next to the template: `ja.po`, `de.po`, or
 with a territory where it matters, `zh_CN.po`, `zh_TW.po`, `pt_BR.po`. The
-Japanese catalogs in cutefish-toolkit and system-monitor show the finished
-form.
+catalogs already in `po/` show the finished form.
 
 1. Make the catalog from the template, in each repository:
 
@@ -339,6 +342,7 @@ files by hand.
   without asking.
 - To contribute a translation, follow "Adding a language" and open one pull
   request per repository; do not change the source code or the templates.
+  For the ten maintained languages, correct only the wrong entries.
 - A successful install is checked by
   `test -f /usr/share/wayland-sessions/cutefish-wayland.desktop` and
   `command -v cutefish-compositor cutefish-wayland-session`. The desktop
