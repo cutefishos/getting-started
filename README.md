@@ -19,7 +19,7 @@ equivalents.
 | Repository | Need | What it is |
 |---|---|---|
 | [cutefish-toolkit](https://github.com/cutefishos/cutefish-toolkit) | Required | UI toolkit every component is built on |
-| [cutefish-framework](https://github.com/cutefishos/cutefish-framework) | Required | Clients of system services, file operations |
+| [cutefish-framework](https://github.com/cutefishos/cutefish-framework) | Required | Clients of system services, file operations, PDF documents |
 | [cutefish-core](https://github.com/cutefishos/cutefish-core) | Required | Session, system services, polkit agent, screen recorder |
 | [cutefish-compositor](https://github.com/cutefishos/cutefish-compositor) | Required | Wayland compositor, window manager, status bar, dock, launcher, lock screen |
 | [filemanager](https://github.com/cutefishos/filemanager) | Required | File manager; also draws the desktop and its icons |
@@ -33,6 +33,8 @@ equivalents.
 | [text-editor](https://github.com/cutefishos/text-editor) | Optional | Text editor |
 | [video-player](https://github.com/cutefishos/video-player) | Optional | Video player |
 | [calendar](https://github.com/cutefishos/calendar) | Optional | Calendar |
+| [calculator](https://github.com/cutefishos/calculator) | Optional | Calculator |
+| [preview](https://github.com/cutefishos/preview) | Optional | Image and PDF viewer |
 | [system-monitor](https://github.com/cutefishos/system-monitor) | Optional | System monitor |
 | [cutefish-computer-use](https://github.com/cutefishos/cutefish-computer-use) | Optional | MCP server that lets agents such as Claude Code and Codex see and use the desktop, with your permission |
 
@@ -48,7 +50,8 @@ Terminal icons pinned to the dock open nothing.
 - Wayland 1.23 or newer, wayland-protocols 1.39 or newer, PipeWire 0.3.65 or
   newer, CMake 3.22 or newer.
 - A C++20 compiler (GCC or Clang) and Clang, which builds Skia.
-- Network access while building cutefish-toolkit, which downloads Skia.
+- Network access before building, to download Skia for cutefish-toolkit and
+  PDFium for cutefish-framework.
 - Optional components: Qt 6 for qt-plugins, libmpv 0.35 or newer for
   video-player, Rust and Cargo for cutefish-computer-use.
 - gettext's `msgfmt` for the translations. Without it everything still
@@ -70,6 +73,7 @@ sudo apt install git cmake ninja-build pkg-config clang python3 gettext \
     libxkbcommon-dev libinput-dev libseat-dev libudev-dev libsystemd-dev libpam0g-dev \
     libfontconfig-dev libfreetype-dev libharfbuzz-dev libicu-dev libexpat1-dev \
     libpng-dev libjpeg-dev zlib1g-dev libwebp-dev libtiff-dev libheif-dev libjxl-dev \
+    liblcms2-dev libopenjp2-7-dev libhwy-dev libabsl-dev \
     libpipewire-0.3-dev libspa-0.2-dev \
     libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libva-dev \
     libxcb1-dev libxcb-composite0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-sync-dev \
@@ -86,6 +90,8 @@ Add these for the optional components you want:
 | text-editor | none beyond the list above |
 | video-player | `libmpv-dev` |
 | calendar | `libcurl4-openssl-dev libical-dev` |
+| calculator | none beyond the list above |
+| preview | none beyond the list above |
 | system-monitor | none beyond the list above |
 | cutefish-computer-use | `rustc cargo librust-wayland-client-dev librust-wayland-scanner-dev librust-wayland-protocols-dev librust-wayland-backend-dev librust-serde-json-dev librust-png-dev librust-jpeg-encoder-dev librust-base64-dev librust-bitflags-dev librust-libc-dev librust-memmap2-dev` |
 
@@ -101,17 +107,18 @@ want.
 mkdir -p ~/cutefish && cd ~/cutefish
 for repo in cutefish-toolkit cutefish-framework cutefish-core cutefish-compositor \
     filemanager icons wallpapers settings terminal xdg-desktop-portal-cutefish \
-    cutefish-dm qt-plugins text-editor video-player calendar system-monitor \
-    cutefish-computer-use; do
+    cutefish-dm qt-plugins text-editor video-player calendar calculator preview \
+    system-monitor cutefish-computer-use; do
     git clone https://github.com/cutefishos/$repo.git
 done
 ```
 
-cutefish-toolkit builds a pinned revision of Skia, which has to be fetched
-first:
+cutefish-toolkit builds a pinned revision of Skia and cutefish-framework a
+pinned revision of PDFium, which have to be fetched first:
 
 ```shell
 cutefish-toolkit/scripts/fetch-skia.sh
+cutefish-framework/scripts/fetch-pdfium.sh
 ```
 
 ## 3. Build and install
@@ -124,7 +131,8 @@ installed CMake packages.
 cd ~/cutefish
 for repo in cutefish-toolkit cutefish-framework qt-plugins icons cutefish-core \
     cutefish-dm filemanager terminal xdg-desktop-portal-cutefish settings \
-    system-monitor text-editor video-player calendar cutefish-compositor wallpapers; do
+    system-monitor text-editor video-player calendar calculator preview \
+    cutefish-compositor wallpapers; do
     [ -d "$repo" ] || continue
     cmake -S "$repo" -B "build/$repo" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_TESTING=OFF || break
@@ -195,14 +203,15 @@ To go back, run the same commands with the names swapped.
 
 ## Updating
 
-Pull every repository, fetch Skia again in case its pinned revision changed,
-and run the loop in step 3 again, along with the Cargo build of
+Pull every repository, fetch Skia and PDFium again in case their pinned
+revisions changed, and run the loop in step 3 again, along with the Cargo build of
 cutefish-computer-use if you have it:
 
 ```shell
 cd ~/cutefish
 for repo in */; do [ -d "$repo/.git" ] && git -C "$repo" pull --ff-only; done
 cutefish-toolkit/scripts/fetch-skia.sh
+cutefish-framework/scripts/fetch-pdfium.sh
 ```
 
 Log out and back in afterwards. The file manager also draws the desktop, so
@@ -234,7 +243,7 @@ provides each module below; on Fedora, `sudo dnf install
 | Components | pkg-config modules |
 |---|---|
 | All | `wayland-client` (>= 1.23), `wayland-server`, `wayland-egl`, `wayland-scanner`, `wayland-protocols` (>= 1.39), `egl`, `glesv2`, `xkbcommon`, `libsystemd`, `fontconfig`, `freetype2`, `harfbuzz`, `icu-uc`, `icu-i18n`, `expat`, `libpng`, `libjpeg`, `zlib`, `libwebp`, `libtiff-4`, `libheif`, `libjxl`, `libjxl_threads` |
-| cutefish-framework | `libpipewire-0.3` (>= 0.3.65), `libspa-0.2` |
+| cutefish-framework | `libpipewire-0.3` (>= 0.3.65), `libspa-0.2`, `harfbuzz-subset`, `lcms2`, `libopenjp2`, `libhwy`, `absl_flat_hash_set`, `absl_inlined_vector`, `absl_cleanup` |
 | cutefish-core | `gbm`, `libdrm`, `libavcodec`, `libavformat`, `libavutil`, `libswscale`, `libva` |
 | cutefish-compositor | `gbm`, `libdrm`, `libinput`, `libseat`, `libudev`, `xcb`, `xcb-composite`, `xcb-xfixes`, `xcb-shape`, `xcb-sync`; the PAM library |
 | cutefish-dm | the PAM library |
@@ -282,6 +291,7 @@ whether a person or an agent wrote it. The text lives in gettext catalogs:
 | calendar | `po/cutefish-calendar.pot` |
 | system-monitor | `po/cutefish-system-monitor.pot` |
 | calculator | `po/cutefish-calculator.pot` |
+| preview | `po/cutefish-preview.pot` |
 
 A language is `po/<code>.po` next to the template: `ja.po`, `de.po`, or
 with a territory where it matters, `zh_CN.po`, `zh_TW.po`, `pt_BR.po`. The
