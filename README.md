@@ -21,7 +21,7 @@ equivalents.
 | [cutefish-toolkit](https://github.com/cutefishos/cutefish-toolkit) | Required | UI toolkit every component is built on |
 | [cutefish-framework](https://github.com/cutefishos/cutefish-framework) | Required | Clients of system services, file operations, PDF documents |
 | [cutefish-core](https://github.com/cutefishos/cutefish-core) | Required | Session, system services, polkit agent, screen recorder |
-| [cutefish-compositor](https://github.com/cutefishos/cutefish-compositor) | Required | Wayland compositor, window manager, status bar, dock, launcher, lock screen |
+| [cutefish-compositor](https://github.com/cutefishos/cutefish-compositor) | Required | Wayland compositor, window manager, menu bar, dock, launcher, lock screen |
 | [filemanager](https://github.com/cutefishos/filemanager) | Required | File manager; also draws the desktop and its icons |
 | [icons](https://github.com/cutefishos/icons) | Required | Default icon theme |
 | [wallpapers](https://github.com/cutefishos/wallpapers) | Required | Default wallpaper |
