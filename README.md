@@ -50,8 +50,9 @@ Terminal icons pinned to the dock open nothing.
 - Wayland 1.23 or newer, wayland-protocols 1.39 or newer, PipeWire 0.3.65 or
   newer, CMake 3.22 or newer.
 - A C++20 compiler (GCC or Clang) and Clang, which builds Skia.
-- Network access before building, to download Skia for cutefish-toolkit and
-  PDFium for cutefish-framework.
+- Network access before building, to download Skia for cutefish-toolkit,
+  PDFium for cutefish-framework, and libghostty-vt with the Zig compiler
+  that builds it for terminal.
 - Optional components: Qt 6 for qt-plugins, libmpv 0.35 or newer for
   video-player, Rust and Cargo for cutefish-computer-use.
 - gettext's `msgfmt` for the translations. Without it everything still
@@ -67,7 +68,7 @@ On Debian 13, for the required and recommended components:
 
 ```shell
 sudo apt update
-sudo apt install git cmake ninja-build pkg-config clang python3 gettext \
+sudo apt install git cmake ninja-build pkg-config clang python3 gettext curl minisign \
     libwayland-dev libwayland-bin wayland-protocols \
     libegl-dev libgles-dev libgbm-dev libdrm-dev \
     libxkbcommon-dev libinput-dev libseat-dev libudev-dev libsystemd-dev libpam0g-dev \
@@ -123,7 +124,57 @@ cutefish-framework/scripts/fetch-pdfium.sh
 
 ## 3. Build and install
 
-Build in this order. Each project is installed before the next is
+terminal links [libghostty-vt](https://github.com/ghostty-org/ghostty)
+1.0 statically, found as the pkg-config module `cutefish-ghostty-vt`. Build
+it first, with the Zig 0.17 release it needs; both downloads are checked
+against their publishers' minisign keys. Skip this if you leave out
+terminal.
+
+```shell
+mkdir -p ~/cutefish/ghostty-vt && cd ~/cutefish/ghostty-vt
+zig=zig-$(uname -m)-linux-0.17.1
+curl -fsSLO https://ziglang.org/download/0.17.1/$zig.tar.xz
+curl -fsSLO https://ziglang.org/download/0.17.1/$zig.tar.xz.minisig
+minisign -Vm $zig.tar.xz -P RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U
+tar -xJf $zig.tar.xz
+base=https://release.files.ghostty.org/libghostty-vt/1.0.1
+for f in libghostty-vt-1.0.1.tar.gz libghostty-vt-1.0.1-deps.tar.gz; do
+    curl -fsSLO $base/$f
+    curl -fsSLO $base/$f.minisig
+    minisign -Vm $f -P RWQlAjJC23149WL2sEpT/l0QKy7hMIFhYdQOFy0Z7z7PbneUgvlsnYcV
+    tar -xzf $f
+done
+cd libghostty-vt-1.0.1
+DESTDIR=~/cutefish/ghostty-vt/stage ../$zig/zig build --prefix /usr \
+    --prefix-lib-dir lib/cutefish-ghostty-vt --prefix-include-dir include/cutefish-ghostty-vt \
+    --system ../libghostty-vt-1.0.1-deps -Doptimize=ReleaseFast
+```
+
+Install only the static library, the headers and a pkg-config file of
+Cutefish's own, so nothing of it is needed at run time and a distribution's
+libghostty-vt can sit beside it:
+
+```shell
+cd ~/cutefish/ghostty-vt/stage/usr
+sudo install -Dm644 -t /usr/lib/cutefish-ghostty-vt lib/cutefish-ghostty-vt/libghostty-vt.a
+sudo cp -r include/cutefish-ghostty-vt /usr/include/
+sudo install -d /usr/share/pkgconfig
+sudo tee /usr/share/pkgconfig/cutefish-ghostty-vt.pc > /dev/null << 'EOF'
+libdir=/usr/lib/cutefish-ghostty-vt
+includedir=/usr/include/cutefish-ghostty-vt
+
+Name: cutefish-ghostty-vt
+Description: libghostty-vt, static, for building Cutefish
+Version: 1.0.1
+Cflags: -I${includedir} -DGHOSTTY_STATIC
+Libs: -L${libdir} -lghostty-vt -lm
+EOF
+pkg-config --modversion cutefish-ghostty-vt
+```
+
+The last command prints `1.0.1`.
+
+Then build the projects in this order. Each project is installed before the next is
 configured, because later projects find earlier ones through their
 installed CMake packages.
 
@@ -214,6 +265,9 @@ cutefish-toolkit/scripts/fetch-skia.sh
 cutefish-framework/scripts/fetch-pdfium.sh
 ```
 
+libghostty-vt needs rebuilding only when terminal's README asks for a newer
+version.
+
 Log out and back in afterwards. The file manager also draws the desktop, so
 a new filemanager build takes effect at the next login.
 
@@ -227,6 +281,8 @@ for manifest in build/*/install_manifest.txt; do
     xargs -d '\n' sudo rm -f -- < "$manifest"
 done
 sudo rm -f /usr/bin/cutefish-computer-use
+sudo rm -rf /usr/lib/cutefish-ghostty-vt /usr/include/cutefish-ghostty-vt \
+    /usr/share/pkgconfig/cutefish-ghostty-vt.pc
 ```
 
 Switch back to your previous display manager first if you enabled
@@ -249,7 +305,7 @@ provides each module below; on Fedora, `sudo dnf install
 | cutefish-dm | the PAM library |
 | filemanager | `libarchive`, `fuse3`, `libmtp`, `smbclient`, `libssh`, `libudev`, and the libzip headers and library |
 | settings | `xcursor`; the libcrypt library |
-| terminal | `libpcre2-16` |
+| terminal | `libpcre2-8`; `cutefish-ghostty-vt`, built in step 3 |
 | text-editor | `libpcre2-8` |
 | video-player | `mpv` (>= 2.0, from libmpv 0.35) |
 | calendar | `libcurl`, `libical` |
@@ -260,8 +316,10 @@ packaged crates in `/usr/share/cargo/registry`. Elsewhere, delete that file
 and Cargo fetches the same crates from crates.io.
 
 Besides libraries, the build needs `git`, `cmake`, `ninja`, `pkg-config`,
-`clang`, `python3`, gettext (for translations) and `gtk-update-icon-cache`
-(for icons). The runtime services in step 4 go by the same names on most
+`clang`, `python3`, gettext (for translations), `gtk-update-icon-cache`
+(for icons), and `curl` and `minisign` (for libghostty-vt). Use the Zig
+release step 3 downloads rather than a distribution's Zig, since
+libghostty-vt 1.0 needs Zig 0.17. The runtime services in step 4 go by the same names on most
 distributions:
 NetworkManager, BlueZ, UPower, power-profiles-daemon, UDisks2, PipeWire with
 WirePlumber, AccountsService, polkit, GNOME Keyring, xdg-desktop-portal and
