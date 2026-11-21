@@ -1,8 +1,7 @@
 # Building Cutefish from Source
 
 How to build the Cutefish desktop from source and install it on an existing
-Linux distribution. There is no installer image yet, so building from source
-is the only way to try it.
+Linux distribution.
 
 This guide is written for people trying Cutefish early and for AI coding
 agents doing the build for them. Commands are complete and run in order;
